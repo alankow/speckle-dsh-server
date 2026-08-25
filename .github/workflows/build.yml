@@ -1,0 +1,56 @@
+name: Build and publish Dushow Speckle frontend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'branding/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch: {}
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout branding repo
+        uses: actions/checkout@v4
+
+      - name: Clone upstream Speckle server
+        run: git clone --depth 1 https://github.com/specklesystems/speckle-server.git upstream
+
+      - name: Apply Dushow branding
+        run: |
+          cp branding/logo_header.png upstream/packages/frontend-2/assets/images/speckle_logo_big.png
+          cp branding/favicon.ico upstream/packages/frontend-2/public/favicon.ico
+          sed -i 's/Speckle/Dushow/g' upstream/packages/frontend-2/components/header/LogoBlock.vue
+          sed -i 's/Speckle/Dushow/g' upstream/packages/frontend-2/app.vue
+          # Fixes an upstream Dockerfile issue where exact apt package versions
+          # (ca-certificates/curl) get superseded by newer Debian security patches.
+          sed -i -E 's/(ca-certificates|curl)=[0-9][^ \\]*/\1/g' upstream/packages/frontend-2/Dockerfile
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: upstream
+          file: upstream/packages/frontend-2/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:dushow
