@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'branding/**'
+      - 'scripts/**'
       - '.github/workflows/build.yml'
   workflow_dispatch: {}
 
@@ -31,6 +32,9 @@ jobs:
           cp branding/favicon.ico upstream/packages/frontend-2/public/favicon.ico
           sed -i 's/Speckle/Dushow/g' upstream/packages/frontend-2/components/header/LogoBlock.vue
           sed -i 's/Speckle/Dushow/g' upstream/packages/frontend-2/app.vue
+          # Bouton "Télécharger le PDF" dans le viewer
+          cp branding/DushowPdfButton.vue upstream/packages/frontend-2/components/DushowPdfButton.vue
+          python3 scripts/patch_pdf_button.py upstream/packages/frontend-2
           # Fixes an upstream Dockerfile issue where exact apt package versions
           # (ca-certificates/curl) get superseded by newer Debian security patches.
           sed -i -E 's/(ca-certificates|curl)=[0-9][^ \\]*/\1/g' upstream/packages/frontend-2/Dockerfile
